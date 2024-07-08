@@ -21,15 +21,14 @@ def simulateSquarePulse(
     dt = tau/NUM_STEPS
     U = hardPulsePropagator(b1, g, dt, det)
     psi = psi0
-    states = np.zeros(NUM_STEPS)
+    states = np.zeros((NUM_STEPS, 2 , 1), dtype=complex)
 
     for i in range(NUM_STEPS):
-        states[i] = psi
+        states[i,:, :] = psi
         psi = np.matmul(U, psi)
     
     plotBlochSphere(states)
-
-    return
+    return 
 
 def hardPulsePropagator(b1, g, dt, det):
 
@@ -56,7 +55,12 @@ def plotBlochSphere(states):
     b.point_color = gradient
     b.show()
 
-    return
+    return b
+
+def predictRabi(b1, g):
+    omegaR = 1/2*g*muB*b1/hbar 
+    return omegaR/(2*np.pi)
+
 
 def state_to_point(vector):
     a = complex(vector[0])
