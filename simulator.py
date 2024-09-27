@@ -112,12 +112,24 @@ def projectionSpectrum(
     g,
     tau,
     det,
-    plot_output=True
+    proj,
+    plot_output=True,
+    interpolate=False
 ):
+    
+    if isinstance(b1, (int, float)):
+        b1 = b1*np.ones(2)
+    elif isinstance(b1, (list, np.ndarray)) and interpolate == True:
+        # Interpolate pulse onto finer step size for plotting
+        NUM_STEPS = 1000
+        times = np.linspace(0, tau, len(b1))
+        times_interp = np.linspace(0, tau, NUM_STEPS)
+        b1 = np.interp(times_interp, times, b1)
+
     spectrum = np.zeros(len(det))
     for d in range(len(det)):
         final_state = evolveState(psi0, b1, g, tau, det[d])[-1]
-        spectrum[d] = np.abs(np.matmul(np.conjugate(psi0).T, final_state))**2
+        spectrum[d] = np.abs(np.matmul(np.conjugate(proj).T, final_state))**2
 
     if plot_output == True:
         # Plot spectrum
@@ -125,9 +137,8 @@ def projectionSpectrum(
         plt.plot(det, spectrum, color=C4)
         plt.xlabel('Detuning (Hz)')
         plt.ylabel(r'State projection: $|\langle \phi | \psi (t) \rangle|^2$')
-        plt.legend()
         plt.title('Final Projection vs. Detuning')
-        plt.ylim([-0.1, 1.1])
+        # plt.ylim([-0.1, 1.1])
 
     return spectrum
 
@@ -138,10 +149,22 @@ def polarisationSpectrum(
     tau,
     det,
     polarisations=['Px','Py','Pz'],
-    plot_output=True
+    plot_output=True,
+    interpolate=False
 ):
+    
+    if isinstance(b1, (int, float)):
+        b1 = b1*np.ones(2)
+    elif isinstance(b1, (list, np.ndarray)) and interpolate == True:
+        # Interpolate pulse onto finer step size for plotting
+        NUM_STEPS = 1000
+        times = np.linspace(0, tau, len(b1))
+        times_interp = np.linspace(0, tau, NUM_STEPS)
+        b1 = np.interp(times_interp, times, b1)
+
     # Calculate final polarisations at each detuning
     spectrum = np.zeros((len(polarisations), len(det)))
+
     for d in range(len(det)):
         final_state = evolveState(psi0, b1, g, tau, det[d])[-1]
         for p in range(len(polarisations)):
@@ -157,7 +180,8 @@ def polarisationSpectrum(
         plt.ylabel(r'Polarisation')
         plt.legend()
         plt.title('Final Polarisation vs. Detuning')
-        plt.ylim([-1.1, 1.1])
+        # plt.ylim([-1.1, 1.1])
+
     
     return spectrum
 
@@ -298,9 +322,9 @@ def evolveState(psi0, b1, g, tau, det):
 
     psi = psi0
     for i in range(len(b1)):
-        states[i, :, :] = psi
-        U = hardPulsePropagator(b1[i], g, dt, det)
+        U = althardPulsePropagator(b1[i], g, dt, det)
         psi = np.matmul(U, psi)
+        states[i, :, :] = psi
 
     return states
 
@@ -310,11 +334,22 @@ def hardPulsePropagator(b1, g, dt, det):
 
     gamma = g*muB/hbar
     # Rotating frame hamiltonian:
-    H = np.array([[2*np.pi*det, gamma*b1],
-                  [gamma*b1, -2*np.pi*det]], dtype=complex) * 1/2
+    H = np.array([[2*np.pi*det, gamma*b1/2],
+                  [gamma*b1/2, -2*np.pi*det]], dtype=complex) * 1/2
     
     # Calculate unitary propagator
-    U = expm(1.0j*H*dt)
+    U = expm(-1.0j*H*dt)
+
+    return U
+
+def althardPulsePropagator(b1, g, dt, det):
+    gamma = g*muB/hbar
+    det = 2*np.pi*det
+    w1 = gamma*b1/2 # power of b1 halved by RWA
+    weff = np.sqrt(w1**2 + det**2)
+    beta = weff*dt
+    U = np.array([[np.cos(beta/2) - 1.0j * det/weff * np.sin(beta/2), -1.0j * w1/weff * np.sin(beta/2)],
+                  [-1.0j*w1/weff*np.sin(beta/2), np.cos(beta/2) + 1.0j*det/weff * np.sin(beta/2)]])
 
     return U
 
@@ -345,9 +380,8 @@ def calcPolarisations(states, Pi):
 
 
 def predictRabi(b1, g):
-    omegaR = g*muB*b1/hbar 
+    omegaR = g*muB*b1/(2*hbar)   
     return omegaR/(2*np.pi)
-
 
 
 

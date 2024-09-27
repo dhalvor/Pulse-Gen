@@ -14,19 +14,24 @@ muB = c.value('Bohr magneton')
 def generateBURPPulse(
     g,
     tau,
-    n, 
+    Np, 
     bw,
     pulse_type,
+    paper=True,
     plot_output=True
 ):
-    A_coeffs, B_coeffs = get_paper_BURP_coeffs(pulse_type, 2)
-    times = np.linspace(0, tau, n)
+    if paper == True:
+        A_coeffs, B_coeffs = get_paper_BURP_coeffs(pulse_type, 2)
+    else:
+        A_coeffs = np.array([-0.7339,   -0.3593 ,   0.5101 ,   0.4689 ,  -0.0245])
+        B_coeffs = np.array([1.1312  ,  0.7096 ,  -0.3640 ,  -0.2139])
+
+    times = np.linspace(0, tau, Np)
     w1 = coeffs_to_BURP(A_coeffs, B_coeffs, times, tau)
-    gamma = g*muB/hbar
+    gamma = g*muB/hbar 
     b1 = w1/gamma
 
     if plot_output == True:
-        times = np.linspace(0, tau, n)
         C5 = '#360568' # Purple
         fig = plt.figure(figsize=(7, 4))
         plt.plot(times, b1, color=C5)
@@ -60,7 +65,7 @@ def generateSLRPulse(
     dt = tau/n
     TBW = tau*bw
     gamma = g*muB/hbar
-    scale = 1/(gamma*dt)
+    scale = 1/(gamma*dt)*2
 
     if pulse_type == 'pi':
         ptype = 'inv'
@@ -100,6 +105,7 @@ def coeffs_to_BURP(
         w1 += B_coeffs[i]*np.sin((i+1)*w*t)
     
     return w1 * w
+
 def get_paper_BURP_coeffs(
     pulse_type,
     version,
